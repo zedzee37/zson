@@ -1,0 +1,6 @@
+debug_json
+json
+
+*.json
+src/.clangd
+
