@@ -1,6 +1,7 @@
 #include "tests.h"
 #include "parser.h"
 #include "smap.h"
+#include "zson.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,6 +18,8 @@ int accumulate_tests(int argc, char **argv) {
         {"parse", test_parse},
         {"parse string", test_parse_string},
         {"parse num", test_parse_num},
+        {"parse bool", test_parse_bool},
+        {"deserialize", test_deserialize},
     };
 
     for (int i = 0; i < sizeof(tests) / sizeof(struct Test); i++) {
@@ -218,6 +221,7 @@ enum TestCode test_open_file(int argc, char **argv) {
 exit:
     free(p->file);
     free(p);
+    free(p->tokens);
 
     return code;
 }
@@ -240,12 +244,9 @@ enum TestCode test_parse(int argc, char **argv) {
     int i = 0;
     while (p->tokens[i].type != EOF) {
         struct Token t = p->tokens[i++];
-        if (t.type == STRING) {
-            char *v = t.val;
-            printf("%s\n", v);
-        } else if (t.type == NUMBER) {
-            double *n = t.val;
-            printf("%f\n", *n);
+
+        if (t.type == NUMBER) {
+            printf("%f\n", t.n);
         }
     }
 
@@ -292,6 +293,62 @@ enum TestCode test_parse_num(int argc, char **argv) {
 exit:
     free(p->tokens);
     free(p);
+
+    return code;
+}
+
+enum TestCode test_parse_bool(int argc, char **argv) {
+    enum TestCode code = T_SUCCESS;
+
+    struct Parser *p = parser_init();
+    p->file = "true";
+
+    bool b;
+    T_ASSERT(match_bool(p, p->file[p->p++], &b), code);
+
+    T_ASSERT(b == true, code);
+
+exit:
+    free(p->tokens);
+    free(p);
+
+    return code;
+}
+
+enum TestCode test_deserialize(int argc, char **argv) {
+    enum TestCode code = T_SUCCESS;
+
+    struct Parser *p = parser_init();
+    switch (parser_read_file(p, argv[1])) {
+        case PASS:
+            break;
+        case FAILURE:
+            code = T_FAILURE;
+            goto exit;
+    }
+
+    enum ParserCode c = parser_parse(p);
+    T_ASSERT(c == PASS, code);
+
+    struct Deserializer *d = deserializer_init(p);
+    deserialize(d);
+
+    enum StrHashMapCode sc;
+    struct JsonElement *j = smap_get(d->head->map, "guh", &sc);
+    struct JsonElement *j1 = smap_get(d->head->map, "gork", &sc);
+    struct JsonElement *j2 = smap_get(d->head->map, "gorking", &sc);
+    struct JsonElement *j3 = smap_get(d->head->map, "gorkcorp", &sc);
+    struct JsonElement *a = smap_get(j3->map, "guh", &sc);
+    struct JsonElement *n = smap_get(a->map, "0", &sc);
+
+    T_ASSERT(j->b == true, code);
+    T_ASSERT(strncmp(j1->s, "guh", 3) == 0, code);
+    T_ASSERT(j2->n == 10.31, code);
+    T_ASSERT(n->n == 10, code);
+
+exit:
+    parser_free(p);
+    deserializer_free(d);
 
     return code;
 }

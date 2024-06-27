@@ -1,6 +1,5 @@
-#include "parser.h"
+#include "parser.h" 
 #include <ctype.h>
-#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -54,7 +53,8 @@ enum ParserCode parser_parse(struct Parser *p) {
     }
 
     if (p->token_count >= p->tokens_size) {
-        p->tokens = realloc(p->tokens, sizeof(struct Token) * ++p->token_count);
+        p->token_count++;
+        p->tokens = reallocarray(p->tokens, p->token_count, sizeof(struct Token));
         if (p->tokens == NULL) {
             return FAILURE;
         }
@@ -68,6 +68,7 @@ enum ParserCode parser_parse(struct Parser *p) {
 
 enum ParserCode parser_parse_next(struct Parser *p) {
     struct Token t;
+    t.type = NONE;  
     char c = p->file[p->p++];
 
     switch (c) {
@@ -89,40 +90,65 @@ enum ParserCode parser_parse_next(struct Parser *p) {
         case COMMA:
             t.type = COMMA;
             break;
+        case ' ':
+            break;
+        case '\n':
+            break;
         default:
             if (isdigit(c)) {
                 double n;
-                match_num(p, c, &n);
+                if (!match_num(p, c, &n)) {
+                    perror("Could not match number");
+                }
                 t.type = NUMBER;
-                t.val = &n;
+                t.n = n;
             } else if (c == '"') {
                 char *s = match_string(p);
                 t.type = STRING;
-                t.val = s;
+                t.s = s;
                 p->p++;
+            } else if (c == 't' || c == 'f') {
+                bool b;
+                if (!match_bool(p, c, &b)) {
+                    perror("Could not match boolean");
+                }
+                t.type = BOOL;
+                t.b = b;
             }
             break;
     }
 
+    if (t.type == NONE) {
+        return PASS;
+    }
+
     if (p->token_count >= p->tokens_size) {
         p->tokens_size *= 2;
-        p->tokens = realloc(p->tokens, sizeof(struct Token) * p->tokens_size);
+        p->tokens = reallocarray(p->tokens, p->tokens_size, sizeof(struct Token));
 
         if (p->tokens == NULL) {
             return FAILURE;
         }
     }
+
     p->tokens[p->token_count++] = t;
 
     return PASS;
 }
 
 void parser_free(struct Parser *p) {
+    int i = 0;
+    while (p->tokens[i].type != EOF) {
+        if (p->tokens[i++].type == STRING) {
+            free(p->tokens[i].s);
+        }
+    }
     free(p->file);
     free(p->tokens);
     free(p);
 }
 
+// Whoever calls must free
 char *parser_slice(struct Parser *p, int start, int end) {
     char *st = p->file + start;
     int l = sizeof(char) * (end - start);
@@ -131,7 +157,7 @@ char *parser_slice(struct Parser *p, int start, int end) {
     return slice;
 }
 
-void match_num(struct Parser *p, char f, double *n) {
+bool match_num(struct Parser *p, char f, double *n) {
     int i = 0;
 
     size_t size = 10;
@@ -146,7 +172,7 @@ void match_num(struct Parser *p, char f, double *n) {
             buf = realloc(buf, sizeof(char) * size);
 
             if (buf == NULL) {
-                return;
+                return false;
             }
         }
 
@@ -159,16 +185,25 @@ void match_num(struct Parser *p, char f, double *n) {
 
     if (i >= size) {
         size++;
+        if (!is_dec) {
+            size += 2;
+        }
+
         buf = realloc(buf, sizeof(char) * size);
 
         if (buf == NULL) {
-            return;
+            return false;
         }
     }
+    if (!is_dec) {
+        buf[i++] = '.';
+        buf[i++] = '0';
+    }
     buf[i] = '\0';
-
     *n = atof(buf);
+
     free(buf);
+    return true;
 }
 
 // Whoever calls this must free the result
@@ -201,4 +236,23 @@ char *match_string(struct Parser *p) {
     buf[i] = '\0';
 
     return buf;
+}
+
+bool match_bool(struct Parser *p, char f, bool *b) {
+    char *to_match = f == 't' ? "true" : "false";
+    int len = strlen(to_match);
+
+    char *slice = parser_slice(p, p->p - 1, p->p + len);
+    if (slice == NULL) {
+        return false;
+    }
+
+    if (strncmp(slice, to_match, len) == 0) { 
+        *b = f == 't' ? true : false;
+        free(slice);
+        return true;
+    }
+
+    free(slice);
+    return false;
 }

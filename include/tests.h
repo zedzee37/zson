@@ -37,5 +37,7 @@ enum TestCode test_open_file(int argc, char **argv);
 enum TestCode test_parse(int argc, char **argv);
 enum TestCode test_parse_string(int argc, char **argv);
 enum TestCode test_parse_num(int argc, char **argv);
+enum TestCode test_parse_bool(int argc, char **argv);
+enum TestCode test_deserialize(int argc, char **argv);
 
 #endif

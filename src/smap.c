@@ -1,4 +1,5 @@
 #include "smap.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -15,12 +16,14 @@ int smap_hash(char *s) {
 struct StrHashMap *smap_init(enum StrHashMapCode *c) {
     struct StrHashMap *map = (struct StrHashMap *)malloc(sizeof(struct StrHashMap));
     if (map == NULL) {
+        perror("map here");
         *c = SMAP_COULD_NOT_CREATE;
         return NULL;
     }
 
     map->data = malloc(sizeof(void *) * 10);
     if (map->data == NULL) {
+        perror("data init");
         *c = SMAP_COULD_NOT_CREATE;
         return NULL;
     }
