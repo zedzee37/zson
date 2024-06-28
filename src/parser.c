@@ -4,8 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct Parser *parser_init() {
-    struct Parser *p = (struct Parser *)malloc(sizeof(struct Parser));
+Parser *parser_init() {
+    Parser *p = (Parser *)malloc(sizeof(Parser));
 
     if (p == NULL) {
         return NULL;
@@ -15,14 +15,14 @@ struct Parser *parser_init() {
     p->tokens_size = 10;
     p->token_count = 0;
 
-    p->tokens = (struct Token *)malloc(sizeof(struct Token) * 10);
+    p->tokens = (Token *)malloc(sizeof(Token) * 10);
     if (p->tokens == NULL) {
         return NULL;
     }
     return p;
 }
 
-enum ParserCode parser_read_file(struct Parser *p, char *file) {
+ParserCode parser_read_file(Parser *p, char *file) {
     FILE *fp = fopen(file, "r");
 
     if (fp == NULL) {
@@ -45,7 +45,7 @@ enum ParserCode parser_read_file(struct Parser *p, char *file) {
     return PASS;
 }
 
-enum ParserCode parser_parse(struct Parser *p) {
+ParserCode parser_parse(Parser *p) {
     while (p->file[p->p] != '\0') {
         if (parser_parse_next(p) == FAILURE) {
             return FAILURE;
@@ -54,20 +54,20 @@ enum ParserCode parser_parse(struct Parser *p) {
 
     if (p->token_count >= p->tokens_size) {
         p->token_count++;
-        p->tokens = reallocarray(p->tokens, p->token_count, sizeof(struct Token));
+        p->tokens = reallocarray(p->tokens, p->token_count, sizeof(Token));
         if (p->tokens == NULL) {
             return FAILURE;
         }
     }
-    struct Token eof;
+    Token eof;
     eof.type = EOF;
     p->tokens[p->token_count] = eof;
 
     return PASS;
 }
 
-enum ParserCode parser_parse_next(struct Parser *p) {
-    struct Token t;
+ParserCode parser_parse_next(Parser *p) {
+    Token t;
     t.type = NONE;  
     char c = p->file[p->p++];
 
@@ -124,7 +124,7 @@ enum ParserCode parser_parse_next(struct Parser *p) {
 
     if (p->token_count >= p->tokens_size) {
         p->tokens_size *= 2;
-        p->tokens = reallocarray(p->tokens, p->tokens_size, sizeof(struct Token));
+        p->tokens = reallocarray(p->tokens, p->tokens_size, sizeof(Token));
 
         if (p->tokens == NULL) {
             return FAILURE;
@@ -136,7 +136,7 @@ enum ParserCode parser_parse_next(struct Parser *p) {
     return PASS;
 }
 
-void parser_free(struct Parser *p) {
+void parser_free(Parser *p) {
     int i = 0;
     while (p->tokens[i].type != EOF) {
         if (p->tokens[i++].type == STRING) {
@@ -149,15 +149,20 @@ void parser_free(struct Parser *p) {
 }
 
 // Whoever calls must free
-char *parser_slice(struct Parser *p, int start, int end) {
+char *parser_slice(Parser *p, int start, int end) {
     char *st = p->file + start;
     int l = sizeof(char) * (end - start);
+
     char *slice = (char *)malloc(l);
+    if (slice == NULL) {
+        return NULL;
+    }
+
     memcpy(slice, st, l);
     return slice;
 }
 
-bool match_num(struct Parser *p, char f, double *n) {
+bool match_num(Parser *p, char f, double *n) {
     int i = 0;
 
     size_t size = 10;
@@ -207,7 +212,7 @@ bool match_num(struct Parser *p, char f, double *n) {
 }
 
 // Whoever calls this must free the result
-char *match_string(struct Parser *p) {
+char *match_string(Parser *p) {
     int i = 0;
 
     size_t size = 10;
@@ -238,7 +243,7 @@ char *match_string(struct Parser *p) {
     return buf;
 }
 
-bool match_bool(struct Parser *p, char f, bool *b) {
+bool match_bool(Parser *p, char f, bool *b) {
     char *to_match = f == 't' ? "true" : "false";
     int len = strlen(to_match);
 

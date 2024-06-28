@@ -13,18 +13,18 @@ int smap_hash(char *s) {
     return hash;
 }
 
-struct StrHashMap *smap_init(enum StrHashMapCode *c) {
-    struct StrHashMap *map = (struct StrHashMap *)malloc(sizeof(struct StrHashMap));
+StrHashMap *smap_init(StrHashMapCode *c) {
+    StrHashMap *map = (StrHashMap *)malloc(sizeof(StrHashMap));
     if (map == NULL) {
         perror("map here");
-        *c = SMAP_COULD_NOT_CREATE;
+        *c = SMAP_FAILURE;
         return NULL;
     }
 
     map->data = malloc(sizeof(void *) * 10);
     if (map->data == NULL) {
         perror("data init");
-        *c = SMAP_COULD_NOT_CREATE;
+        *c = SMAP_FAILURE;
         return NULL;
     }
 
@@ -34,11 +34,11 @@ struct StrHashMap *smap_init(enum StrHashMapCode *c) {
     return map;
 }
 
-void smap_put(struct StrHashMap *m, char *k, void *v, enum StrHashMapCode *c) {
+void smap_put(StrHashMap *m, char *k, void *v, StrHashMapCode *c) {
     if (m->item_count >= m->size) {
         m->data = realloc(m->data, sizeof(void *) * m->size * 2);
         if (m->data == NULL) {
-            *c = SMAP_COULD_NOT_ADD;
+            *c = SMAP_FAILURE;
             return;
         }
         m->size *= 2;
@@ -46,7 +46,7 @@ void smap_put(struct StrHashMap *m, char *k, void *v, enum StrHashMapCode *c) {
 
     int h = smap_hash(k) % m->size;
     if (h >= m->size || h < 0) {
-        *c = SMAP_COULD_NOT_ADD;
+        *c = SMAP_FAILURE;
         return;
     }
 
@@ -54,11 +54,11 @@ void smap_put(struct StrHashMap *m, char *k, void *v, enum StrHashMapCode *c) {
     *c = SMAP_SUCCESS;
 }
 
-void *smap_get(struct StrHashMap *m, char *k, enum StrHashMapCode *c) {
+void *smap_get(StrHashMap *m, char *k, StrHashMapCode *c) {
     int h = smap_hash(k) % m->size;
 
     if (h >= m->size || h < 0) {
-        *c = SMAP_COULD_NOT_GET;
+        *c = SMAP_FAILURE;
         return NULL;
     }
 
@@ -66,17 +66,17 @@ void *smap_get(struct StrHashMap *m, char *k, enum StrHashMapCode *c) {
     return m->data[h];
 }
 
-void smap_remove(struct StrHashMap *m, char *k, enum StrHashMapCode *c) {
+void smap_remove(StrHashMap *m, char *k, StrHashMapCode *c) {
     int h = smap_hash(k) % m->size;
 
     if (h < 0 || h >= m->size) {
-        *c = SMAP_COULD_NOT_REMOVE;
+        *c = SMAP_FAILURE;
         return;
     }
 
     void *v = m->data[h];
     if (v == NULL) {
-        *c = SMAP_COULD_NOT_REMOVE;
+        *c = SMAP_FAILURE;
         return;
     }
 
@@ -85,7 +85,7 @@ void smap_remove(struct StrHashMap *m, char *k, enum StrHashMapCode *c) {
     *c = SMAP_SUCCESS;
 }
 
-void smap_free(struct StrHashMap *m) {
+void smap_free(StrHashMap *m) {
     free(m->data);
     free(m);
 }

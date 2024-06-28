@@ -3,9 +3,9 @@
 
 #include <stdbool.h>
 
-enum ParserCode { FAILURE = 0, PASS = 1 };
+typedef enum { FAILURE = 0, PASS = 1 } ParserCode;
 
-enum TokenType {
+typedef enum {
     BRACE_L = '{',
     BRACE_R = '}',
     BRACKET_L = '[',
@@ -18,32 +18,32 @@ enum TokenType {
     NONE = ' ',
     BOOL = 'T',
     EOF = '\0'
-};
+} TokenType;
 
-struct Token {
-    enum TokenType type;
+typedef struct {
+    TokenType type;
     char *s;
     double n;
     bool b;
-};
+} Token;
 
-struct Parser {
+typedef struct {
     char *file;
     int p;
 
-    struct Token *tokens;
+    Token *tokens;
     int tokens_size;
     int token_count;
-};
+} Parser;
 
-extern struct Parser *parser_init();
-extern enum ParserCode parser_read_file(struct Parser *p, char *file);
-extern enum ParserCode parser_parse(struct Parser *p);
-extern enum ParserCode parser_parse_next(struct Parser *p);
-extern void parser_free(struct Parser *p);
-extern char *parser_slice(struct Parser *p, int start, int end);
-extern bool match_num(struct Parser *p, char f, double *n);
-extern char *match_string(struct Parser *p);
-extern bool match_bool(struct Parser *p, char f, bool *b);
+extern Parser *parser_init();
+extern ParserCode parser_read_file(Parser *p, char *file);
+extern ParserCode parser_parse(Parser *p);
+extern ParserCode parser_parse_next(Parser *p);
+extern void parser_free(Parser *p);
+extern char *parser_slice(Parser *p, int start, int end);
+extern bool match_num(Parser *p, char f, double *n);
+extern char *match_string(Parser *p);
+extern bool match_bool(Parser *p, char f, bool *b);
 
 #endif

@@ -4,30 +4,30 @@
 #include "smap.h"
 #include "parser.h"
 
-struct JsonElement {
+typedef struct {
     double n;
     char *s;
     bool b;
-    struct StrHashMap *map;    
-};
+    StrHashMap *map;    
+} JsonElement;
 
-struct Deserializer {
+typedef struct {
     unsigned int c;
-    struct JsonElement *head;
-    struct Parser *p;
-};
+    JsonElement *head;
+    Parser *p;
+} Deserializer;
 
-extern struct JsonElement *json_element_init();
-extern void json_element_free(struct JsonElement *j);
+extern JsonElement *json_element_init();
+extern void json_element_free(JsonElement *j);
 
-extern struct Deserializer *deserializer_init(struct Parser *p);
-extern void deserializer_free(struct Deserializer *d);
-extern struct JsonElement *deserialize(struct Deserializer *d);
-extern struct JsonElement *deserialize_object(struct Deserializer *d);
-extern struct JsonElement *deserialize_array(struct Deserializer *d);
-extern struct JsonElement *deserialize_string(struct Deserializer *d);
-extern struct JsonElement *deserialize_number(struct Deserializer *d);
-extern struct JsonElement *deserialize_bool(struct Deserializer *d);
-extern struct Token *get_token(struct Deserializer *d);
+extern Deserializer *deserializer_init(Parser *p);
+extern void deserializer_free(Deserializer *d);
+extern JsonElement *deserialize(Deserializer *d);
+extern JsonElement *deserialize_object(Deserializer *d);
+extern JsonElement *deserialize_array(Deserializer *d);
+extern JsonElement *deserialize_string(Deserializer *d);
+extern JsonElement *deserialize_number(Deserializer *d);
+extern JsonElement *deserialize_bool(Deserializer *d);
+extern Token *get_token(Deserializer *d);
 
 #endif
