@@ -1,4 +1,5 @@
 #include "zson.h"
+#include "allocators.h"
 #include "parser.h"
 #include "tests.h"
 #include "smap.h"
@@ -10,17 +11,59 @@ int main(int argc, char *argv[]) {
 #ifdef DEBUGF
     return accumulate_tests(argc, argv);
 #endif
-    return 0;
+    int code = 0;
+
+    if (argc < 2) {
+        perror("Missing file argument.");
+        return -1;
+    }
+
+    Parser *p = parser_init();
+
+    if (p == NULL) {
+        perror("Could not allocate memory for Parser");
+        code = -1;
+        goto parser_exit;
+    }
+
+    switch (parser_read_file(p, argv[1])) {
+        case PASS:
+            break;
+        case FAILURE:
+            code = -1;
+            goto parser_exit;
+    }
+
+    ParserCode c = parser_parse(p);
+
+    Deserializer *d = deserializer_init(p);
+    if (d == NULL) {
+        perror("Could not allocate memory for Deserializer.");
+        code = -1;
+        goto exit;
+    }
+
+    StrHashMapCode i;
+    JsonElement *j = deserialize(d);
+    printf("%f\n", ((JsonElement *)smap_get(j->map, "guh", &i))->n);
+
+exit:
+    deserializer_free(d);
+parser_exit:
+    parser_free(p);
+
+leave:
+    return code;
 }
 
-JsonElement *json_element_init() {
-    JsonElement *j = (JsonElement *)malloc(sizeof(JsonElement));
+JsonElement *json_element_init(ArenaAllocator *arena) {
+    JsonElement *j = arena_alloc(arena, sizeof(JsonElement));
     if (j == NULL) {
         return NULL;
     }
 
     StrHashMapCode c;
-    StrHashMap *map = smap_init(&c);
+    StrHashMap *map = smap_init(&c, arena);
     if (c == SMAP_FAILURE) {
         perror("map");
         return NULL;
@@ -30,23 +73,21 @@ JsonElement *json_element_init() {
     return j;
 }
 
-void json_element_free(JsonElement *j) {
-    if (j == NULL) {
-        return;
-    }
-
-    free(j);
-}
-
 Deserializer *deserializer_init(Parser *p) {
     Deserializer *d = (Deserializer *)malloc(sizeof(Deserializer));
-    d->p = p;
-    d->c = 0;
+    if (d == NULL) {
+        return NULL;
+    }
+
+    ArenaAllocator *allocator = init_arena();
+    d->parser = p;
+    d->current = 0;
+    d->arena = allocator;
     return d;
 }
 
 void deserializer_free(Deserializer *d) {
-    json_element_free(d->head);
+    arena_deinit(d->arena);
     free(d);
 }
 
@@ -61,21 +102,21 @@ JsonElement *deserialize_object(Deserializer *d) {
         return deserialize_array(d);
     }
 
-    d->c++;
+    d->current++;
     Token *str;
 
-    JsonElement *j = json_element_init();
+    JsonElement *j = json_element_init(d->arena);
     while (1) {
         switch (get_token(d)->type) {
             case STRING:
                 str = get_token(d);
-                d->c++;
+                d->current++;
                 
                 if (get_token(d)->type != COLON) {
                     perror("missing colon");
                 }
 
-                d->c++;
+                d->current++;
                 
                 StrHashMapCode c;
                 JsonElement *j1 = deserialize_object(d);
@@ -87,7 +128,7 @@ JsonElement *deserialize_object(Deserializer *d) {
 
                 Token *t = get_token(d);
                 if (t->type == COMMA) {
-                    d->c++;
+                    d->current++;
                     break;
                 }
 
@@ -95,6 +136,8 @@ JsonElement *deserialize_object(Deserializer *d) {
                     perror("Missing end brace.");
                     return NULL;
                 }
+
+                d->current++;
 
                 return j;
                 break;
@@ -114,9 +157,9 @@ JsonElement *deserialize_array(Deserializer *d) {
         return deserialize_string(d);
     }
 
-    d->c++;
+    d->current++;
 
-    JsonElement *j = json_element_init();
+    JsonElement *j = json_element_init(d->arena);
     int i = 0;
     while (1) {
         JsonElement *j1 = deserialize_object(d);
@@ -129,7 +172,7 @@ JsonElement *deserialize_array(Deserializer *d) {
         smap_put(j->map, n, j1, &c);
 
         if (t->type == COMMA) {
-            d->c++;
+            d->current++;
             i++;
             continue;
         }
@@ -139,7 +182,7 @@ JsonElement *deserialize_array(Deserializer *d) {
             return NULL;
         }
 
-        d->c++;
+        d->current++;
         return j;
     }
 }
@@ -150,8 +193,8 @@ JsonElement *deserialize_string(Deserializer *d) {
     }
 
     Token *t = get_token(d);
-    d->c++;
-    JsonElement *j = json_element_init();
+    d->current++;
+    JsonElement *j = json_element_init(d->arena);
     j->s = t->s;
     return j;
 }
@@ -162,8 +205,8 @@ JsonElement *deserialize_number(Deserializer *d) {
     }
     
     Token *t = get_token(d);
-    d->c++;
-    JsonElement *j = json_element_init();
+    d->current++;
+    JsonElement *j = json_element_init(d->arena);
     j->n = t->n;
     return j;
 }
@@ -175,9 +218,9 @@ JsonElement *deserialize_bool(Deserializer *d) {
     }
     
     Token *t = get_token(d);
-    d->c++;
+    d->current++;
 
-    JsonElement *j = json_element_init();
+    JsonElement *j = json_element_init(d->arena);
     if (j == NULL) {  // Check if j is NULL
         perror("json_element_init failed");
         return NULL;
@@ -188,5 +231,5 @@ JsonElement *deserialize_bool(Deserializer *d) {
 }
 
 Token *get_token(Deserializer *d) {
-    return &d->p->tokens[d->c];
+    return &d->parser->tokens[d->current];
 }

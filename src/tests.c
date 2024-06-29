@@ -1,4 +1,5 @@
 #include "tests.h"
+#include "allocators.h"
 #include "parser.h"
 #include "smap.h"
 #include "zson.h"
@@ -18,7 +19,8 @@ int accumulate_tests(int argc, char **argv) {
         {"parse", test_parse},
         {"parse string", test_parse_string},
         {"parse num", test_parse_num},
-        {"parse bool", test_parse_bool}
+        {"parse bool", test_parse_bool},
+        {"deserialize", test_deserialize},
     };
 
     for (int i = 0; i < sizeof(tests) / sizeof(Test); i++) {
@@ -44,7 +46,8 @@ TestCode test_map_add(int argc, char **argv) {
     TestCode code = T_SUCCESS;
 
     StrHashMapCode c;
-    StrHashMap *m = smap_init(&c);
+    ArenaAllocator *arena = init_arena();
+    StrHashMap *m = smap_init(&c, arena);
     if (c == SMAP_FAILURE) {
         perror("malloc");
         code = T_FAILURE;
@@ -69,7 +72,7 @@ TestCode test_map_add(int argc, char **argv) {
     T_ASSERT(*b == a, code);
 
 exit:
-    smap_free(m);
+    arena_deinit(arena);
 
     return code;
 }
@@ -94,7 +97,8 @@ TestCode test_alotta_stuff(int argc, char **argv) {
     TestCode code = T_SUCCESS;
 
     StrHashMapCode c;
-    StrHashMap *m = smap_init(&c);
+    ArenaAllocator *arena = init_arena();
+    StrHashMap *m = smap_init(&c, arena);
     if (c == SMAP_FAILURE) {
         perror("malloc");
         code = T_FAILURE;
@@ -124,7 +128,7 @@ TestCode test_alotta_stuff(int argc, char **argv) {
     T_ASSERT(*val == 20, code);
 
 exit:
-    smap_free(m);
+    arena_deinit(arena);
 
     return code;
 }
@@ -133,7 +137,8 @@ TestCode test_large_struct(int argc, char **argv) {
     TestCode code = T_SUCCESS;
 
     StrHashMapCode c;
-    StrHashMap *m = smap_init(&c);
+    ArenaAllocator *arena = init_arena();
+    StrHashMap *m = smap_init(&c, arena);
     if (c == SMAP_FAILURE) {
         perror("malloc");
         code = T_FAILURE;
@@ -163,7 +168,7 @@ TestCode test_large_struct(int argc, char **argv) {
     T_ASSERT(a == b, code);
 
 exit:
-    smap_free(m);
+    arena_deinit(arena);
 
     return code;
 }
@@ -172,7 +177,8 @@ TestCode test_remove(int argc, char **argv) {
     TestCode code = T_SUCCESS;
 
     StrHashMapCode c;
-    StrHashMap *m = smap_init(&c);
+    ArenaAllocator *arena = init_arena();
+    StrHashMap *m = smap_init(&c, arena);
     if (c == SMAP_FAILURE) {
         perror("malloc");
         code = T_FAILURE;
@@ -199,7 +205,7 @@ TestCode test_remove(int argc, char **argv) {
     T_ASSERT(v == NULL, code);
 
 exit:
-    smap_free(m);
+    arena_deinit(arena);
     return code;
 }
 
@@ -329,8 +335,12 @@ TestCode test_deserialize(int argc, char **argv) {
     ParserCode c = parser_parse(p);
     T_ASSERT(c == PASS, code);
 
+    Deserializer *d = deserializer_init(p);
+    JsonElement *j = deserialize(d);
+
 exit:
     parser_free(p);
+    deserializer_free(d);
 
     return code;
 }

@@ -13,15 +13,15 @@ int smap_hash(char *s) {
     return hash;
 }
 
-StrHashMap *smap_init(StrHashMapCode *c) {
-    StrHashMap *map = (StrHashMap *)malloc(sizeof(StrHashMap));
+StrHashMap *smap_init(StrHashMapCode *c, ArenaAllocator *allocator) {
+    StrHashMap *map = arena_alloc(allocator, sizeof(StrHashMap));
     if (map == NULL) {
         perror("map here");
         *c = SMAP_FAILURE;
         return NULL;
     }
 
-    map->data = malloc(sizeof(void *) * 10);
+    map->data = arena_alloc(allocator, sizeof(void *) * 10);
     if (map->data == NULL) {
         perror("data init");
         *c = SMAP_FAILURE;
@@ -85,7 +85,3 @@ void smap_remove(StrHashMap *m, char *k, StrHashMapCode *c) {
     *c = SMAP_SUCCESS;
 }
 
-void smap_free(StrHashMap *m) {
-    free(m->data);
-    free(m);
-}

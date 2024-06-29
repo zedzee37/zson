@@ -3,22 +3,24 @@
 
 #include "smap.h"
 #include "parser.h"
+#include "allocators.h"
 
 typedef struct {
     double n;
     char *s;
     bool b;
     StrHashMap *map;    
+    ArenaAllocator *arena;
 } JsonElement;
 
 typedef struct {
-    unsigned int c;
+    unsigned int current;
     JsonElement *head;
-    Parser *p;
+    Parser *parser;
+    ArenaAllocator *arena;
 } Deserializer;
 
-extern JsonElement *json_element_init();
-extern void json_element_free(JsonElement *j);
+extern JsonElement *json_element_init(ArenaAllocator *arena);
 
 extern Deserializer *deserializer_init(Parser *p);
 extern void deserializer_free(Deserializer *d);
