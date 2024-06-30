@@ -5,4 +5,6 @@ json
 src/.clangd
 
 core
+zig-out
+.zig-cache
 

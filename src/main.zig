@@ -1,30 +1,95 @@
 const std = @import("std");
+const expect = std.testing.expect;
 
-pub fn main() !void {
-    // Prints to stderr (it's a shortcut based on `std.io.getStdErr()`)
-    std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
+const JsonTypeVariant = enum { object, array, string, number, boolean };
 
-    // stdout is for the actual output of your application, for example if you
-    // are implementing gzip, then only the compressed bytes should be sent to
-    // stdout, not any debugging messages.
-    const stdout_file = std.io.getStdOut().writer();
-    var bw = std.io.bufferedWriter(stdout_file);
-    const stdout = bw.writer();
+const JsonType = union(JsonTypeVariant) {
+    object: std.StringHashMap(JsonType),
+    array: std.ArrayList(JsonType),
+    string: []u8,
+    number: f32,
+    boolean: bool,
 
-    try stdout.print("Run `zig build test` to run the tests.\n", .{});
+    const Self = @This();
 
-    const possible_null: ?i32 = null;
-    _ = if (possible_null) |v|
-        v
-    else
-        10;
+    pub fn init(comptime t: JsonTypeVariant, value: anytype) Self {
+        return @unionInit(Self, @tagName(t), value);
+    }
+};
 
-    try bw.flush(); // don't forget to flush!
+const Deserializer = struct {
+    pub fn deserialize(file: []u8) JsonType {
+        Deserializer.deserialize_object
+    }
+
+    fn deserialize_object(file: []u8, current: u32) JsonType {
+    }
+
+    fn deserialize_array(file: []u8, current: u32) JsonType {
+    }
+
+    fn deserialize_number(file: []u8, current: u32) JsonType {
+    }
+
+    fn deserialize_bool(file: []u8, current: u32) JsonType {
+    }
+};
+
+pub fn main() !void {}
+
+pub fn getFileArg() ?[]u8 {
+    const allocator = std.heap.page_allocator;
+
+    var iterator = std.process.argsWithAllocator(allocator) catch |err| {
+        std.debug.panic("{err}", .{err});
+        return null;
+    };
+    defer iterator.deinit();
+
+    _ = iterator.next();
+    const file_name = iterator.next();
+
+    return if (file_name) |n|
+        n
+    else {
+        std.debug.panic("Expected file as input", .{});
+        return null;
+    };
 }
 
-test "simple test" {
-    var list = std.ArrayList(i32).init(std.testing.allocator);
-    defer list.deinit(); // try commenting this out and see if zig detects the memory leak!
-    try list.append(42);
-    try std.testing.expectEqual(@as(i32, 42), list.pop());
+pub fn readFile(file_path: []u8, allocator: std.mem.Allocator) ![]u8 {
+    const fp = try std.fs.cwd().openFile(file_path, .{});
+    defer fp.close();
+
+    const size = try fp.getEndPos();
+    const buf = try allocator.alloc(u8, size);
+
+    _ = try fp.read(buf);
+    return buf;
+}
+
+test "Json Type" {
+    var str = "guh".*;
+    const val = JsonType.init(JsonTypeVariant.string, &str);
+
+    try expect(std.mem.eql(u8, "guh", val.string));
+}
+
+test "open file" {
+    const allocator = std.testing.allocator;
+
+    var fp = "test.json".*;
+    const file = try readFile(&fp, allocator);
+    defer allocator.free(file);
+}
+
+test "Deserializer" {
+    const allocator = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+
+    var fp = "test.json".*;
+    const file = try readFile(&fp, allocator);
+
+    const deserializer = Deserializer.deserialize(file);
 }
