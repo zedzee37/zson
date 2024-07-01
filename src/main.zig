@@ -86,6 +86,7 @@ const Deserializer = struct {
         self.current += 1;
 
         var map = std.StringArrayHashMap(JsonElement).init(self.allocator);
+
         while (!self.match('}')) {
             const string = self.parseString() catch {
                 return DeserializerError.CouldNotParseString;
